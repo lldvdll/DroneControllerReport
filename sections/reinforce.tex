@@ -1,11 +1,19 @@
 \section{REINFORCE}
 
-REINFORCE is a policy gradient method which directly learns a stochastic policy $\pi_{\theta}(a|s)$. Discounted returns $G_t$ are caluclated over a full episode of simulation, parameters $\theta$ of the policy model are updated such that the log probability of each action $a_t$ given state $s_t$ will increase or decrease in proportion to the return $G_t$. 
+\subsection{Algorithm and Architecture}
+We implement REINFORCE, a policy gradient method that directly optimises a stochastic policy $\pi_{\theta}(a|s)$. The parameters $\theta$ are updated via gradient ascent on the expected return $J(\theta)$, approximated by sampling trajectories:
+\begin{equation}
+    \theta \leftarrow \theta + \alpha G_t \nabla_{\theta} \log \pi_{\theta}(a_t|s_t)
+\end{equation}
+where $\alpha$ is the learning rate and $G_t$ is the discounted return, calculated over a full episode of simulation.
 
-$\theta \leftarrow  \theta + \alpha G_t \bigtriangledown_{\theta} \log (\pi_{\theta}(a_t|s_t))$
+While linear models and discrete action spaces (meta-actions) were initially tested, they suffered from limited expressivity and frequent policy collapse respectively. Consequently, we adopted a neural network architecture with a single hidden layer (32 units) and continuous Gaussian outputs. The network outputs means $\mu$ and standard deviations $\sigma$ for total thrust and roll, which are deterministically mapped to motor outputs. This continuous formulation better approximates the kinematic state space, removing the complexity of modelling thrust coupling, and allows $\sigma$ to be learned as an adaptive exploration parameter. Activations were selected to fit output ranges: tanh for thrust $(0,1)$ and sigmoid for roll $(-1,1)$ where saturation near extreme values is beneficial, while ReLU was used for the hidden layer to mitigate vanishing gradients.
 
-A linear model was tested, and though it was possible to simulate the provided heuristic model through weight initialisation, improvement was limited. 
-A simple neural network with a single hidden layer of size 32 was used, and two different output architectures tested. The first using discrete meta-actions (up, down, left, right, hover). Training was fraught with gradient instability with frequenct policy collapse, typically to an “action X is always best” model. Though weight decay and gradient clipping improved stability, this approach was discarded. 
-The second and prefered architecture used continuous outputs modelling gaussian distributions over thrust and roll, which were then mapped deterministically to left and right thrusts. This formulation was hypothesised more appropriate for the kinematic state space, removing the need for the model to learn thrust coupling. Standard deviations were fixed during initial experiments during hyperparameter and reward analyses, though these were eventually incorporated into the model as adaptive exploration parameters.
+\subsection{Stability and Normalisation}
+REINFORCE is inherently high-variance. Since gradient estimates are based on stochastic Monte Carlo samples and can fluctuate wildly between episodes, convergence is unstable. To stabilise training, we employed:
 
-REINFORCE is notorious for instability as it is subject to high variance, and this was observed in initial experiments. To overcome this, a number of simple normalisation tricks were implemented, including state space normalisation, Xavier weight initialisation, and batch normalisation of returns. A batch mean baseline was used to overcome assymetric distribution in returns, important, for example, if all returns are net negative then even good actions result in negative gradients and are therefore penalised.
+\begin{itemize}
+    \item \textbf{Input Normalisation:} State variables are scaled to the range $(0,1)$, so that natural heterogeneity in feature units is not propagated through to credit assignment.
+    \item \textbf{Baseline:} Discounted returns $G_t$ are normalised across the episode batch (zero mean, unit variance). This acts as a baseline, preventing asymmetric reward distributions from destabilising the policy updates (e.g., with all-negative returns, even good actions are penalised)
+    \item \textbf{Initialisation:} Weights are initialised using Gaussian Xavier initialisation to stabilise gradients.
+\end{itemize}
