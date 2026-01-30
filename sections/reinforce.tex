@@ -1,0 +1,8 @@
+\section{Introduction}
+
+Write your introduction here. One can cite\cite{ARXIVEXAMPLE} referenced in the \textit{references.bib} file.
+
+REINFORCE is a policy gradient method, that is, rather than learning a value model, the policy is learned directly from experience. It uses a stochastic policy $\pi_{\theta}(a|s)$ to sample actions $a$ in state $s$. Discounted returns $G_t$ are caluclated over a full episode of simulation, parameters $\theta$ of the policy are updated such that the <maths this? log probability of each action $a_t$ given state $s_t$ will increase or decrease in proportion to the return $G_t$. 
+
+$\theta \leftarrow  \theta + \alpha G_t \bigtriangledown_{\theta} \log (\pi_{\theta}(a_t|s_t))$
+
