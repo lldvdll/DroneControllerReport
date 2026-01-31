@@ -1,6 +1,6 @@
 \section{REINFORCE}
 
-\subsection{Algorithm and Architecture}
+% \subsection{Algorithm and Architecture}
 We implement REINFORCE, a policy gradient method that directly optimises a stochastic policy $\pi_{\theta}(a|s)$. The parameters $\theta$ are updated via gradient ascent on the expected return $J(\theta)$, approximated by sampling trajectories:
 \begin{equation}
     \theta \leftarrow \theta + \alpha G_t \nabla_{\theta} \log \pi_{\theta}(a_t|s_t)
@@ -9,7 +9,8 @@ where $\alpha$ is the learning rate and $G_t$ is the discounted return, calculat
 
 While linear models and discrete action spaces (meta-actions) were initially tested, they suffered from limited expressivity and frequent policy collapse respectively. Consequently, we adopted a neural network architecture with a single hidden layer (32 units) and continuous Gaussian outputs. The network outputs means $\mu$ and standard deviations $\sigma$ for total thrust and roll, which are deterministically mapped to motor outputs. This continuous formulation better approximates the kinematic state space, removing the complexity of modelling thrust coupling, and allows $\sigma$ to be learned as an adaptive exploration parameter. Activations were selected to fit output ranges: tanh for thrust $(0,1)$ and sigmoid for roll $(-1,1)$ where saturation near extreme values is beneficial, while ReLU was used for the hidden layer to mitigate vanishing gradients.
 
-\subsection{Stability and Normalisation}
+\medskip
+% \subsection{Stability and Normalisation}
 REINFORCE is inherently high-variance. Since gradient estimates are based on stochastic Monte Carlo samples and can fluctuate wildly between episodes, convergence is unstable. To stabilise training, we employed:
 
 \begin{itemize}
@@ -17,3 +18,23 @@ REINFORCE is inherently high-variance. Since gradient estimates are based on sto
     \item \textbf{Baseline:} Discounted returns $G_t$ are normalised across the episode batch (zero mean, unit variance). This acts as a baseline, preventing asymmetric reward distributions from destabilising the policy updates (e.g., with all-negative returns, even good actions are penalised)
     \item \textbf{Initialisation:} Weights are initialised using Gaussian Xavier initialisation to stabilise gradients.
 \end{itemize}
+
+\smallskip
+% \subsection{Learning and Reward Shaping}
+Early experiments showed the drone typically learned behaviours contrary to expectations. Simply rewarding short distance to target and hitting targets resulted in policies where the agent learned that drifting away was more rewarding than applying destabilising directive actions toward targets.
+
+We address this with two ideas. Firstly, we simplify the problem with a curriculum. The agent must first learn stability, and then it should learn to acquire targets. Secondly, we shape rewards to meet the new objectives.
+
+Initially one permanent target is created at (0,0). We employ two rewards, one to encourage target proximity and to penalise actions which smplify drift.
+\begin{itemize}
+    \item \textbf{Distance to target reward:} Introducing a positive radius to the distance to target reward creates a basin of attraction around the origin.
+    \begin{equation}
+        r_{dist} = 0.25 - \Vert{\vec{x}_{target}} - {\vec{x}_{agent}}\Vert^2
+    \end{equation}
+    \item \textbf{Drift amplification penlty:} State-action reward, penalising roll in the same direction as drift. Note that when drift correction was included, it resulted in either reward gaming or catastrophic oscillation from overcorrection.
+    \begin{equation}
+        r_{drift} = min(0,-v_xroll)
+    \end{equation}
+\end{itemize}
+
+\smallskip
