@@ -25,7 +25,7 @@ Early experiments showed the drone typically learned behaviours contrary to expe
 
 We address this with two ideas. Firstly, we simplify the problem with a curriculum. The agent must first learn stability, and then it should learn to acquire targets. Secondly, we shape rewards to meet the new objectives.
 
-Initially one permanent target is created at (0,0). We employ two rewards, one to encourage target proximity and to penalise actions which smplify drift.
+Initially one permanent target is created at (0,0). We employ two rewards, one to encourage target proximity and to penalise actions which smplify drift. The shift from state to state-action rewards along with a low discount factor (0.5), intended to localise returns and reward intention rather than outcome to overcome the return smoothing of REINFORCE. We note that Actor-Critic (AC) is a more principled approach to the same objective and should be investigated in future work.
 \begin{itemize}
     \item \textbf{Distance to target reward:} Introducing a positive radius to the distance to target reward creates a basin of attraction around the origin.
     \begin{equation}
