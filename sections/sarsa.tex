@@ -1,4 +1,5 @@
-\subsection{Environment}
+\section{SARSA}
+Environment
 The drone is modelled as a 2D rigid body with two propellers providing independent thrust values $(T_1,T_2)\in [0,1]^2$. Balanced thrust maintains hover $(T_1+T_2=mg=1N)$, while differential thrust $\bigtriangleup T=T_1-T_2$ generates torque inducing pitch rotation θ, allowing lateral motion via tilted thrust.
 When pitched at angle θ, the thrust decomposes into vertical and horizontal components: 
 $F_y=(T_1+T_2) cos⁡ \theta -mg,F_x=(T_1+T_2)sin \theta$.
@@ -20,7 +21,7 @@ State Space The drone's state captures six dimensions of physical dynamics, incl
 Action Space We define a discrete action space consisting of six macro actions that map to physical thrust outputs (T_1,T_2). The HOVER_STABILISE action maintains the current altitude while stabilising pitch. Lateral navigation is controlled via TILT_LEFT and TILT_RIGHT, which modulate the pitch angle to generate horizontal acceleration. Vertical control are managed by BOOST_UP and BOOST_DOWN, which modify vertical thrust while maintaining a level attitude. Finally, ARREST_MOTION serves as a brake, damping both linear and angular velocities to bring the drone to a halt.
 (B) Neural Network
 
-\subsection{Training}
+Training
 Curriculum Learning We employed a curriculum training approach starting with full exploration and random Q-table initialisation in stage 0. Advancement is gated by a performance metric, the rolling average of targets hit per episode. As the agent meets metric criterion and progresses to stages 1 and 2, we decrease the exploration ϵ and increase the complexity of target hitting tasks.
 Episode Termination. An episode terminates when one of three conditions is met: (i) the successful acquisition of all targets in the sequence, (ii) a boundary violation (crash), or (iii) the expiration of the maximum timesteps.
 	Implementation Details
