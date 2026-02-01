@@ -1,5 +1,4 @@
 \section{Tabular SARSA}
-\paragraph{Algorithm}
 Tabular methods offer superior stability and interpretability compared to deep reinforcement learning. We employ SARSA, an on-policy temporal difference algorithm that updates Q-values as: 
 \begin{equation} 
 Q(s_t,a_t) \leftarrow Q(s_t,a_t)+\alpha \left[ r_{t+1}+\gamma Q(s_{t+1},a_{t+1})-Q(s_t,a_t) \right]
