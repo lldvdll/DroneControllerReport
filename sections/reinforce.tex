@@ -37,4 +37,13 @@ Initially one permanent target is created at (0,0). We employ two rewards, one t
     \end{equation}
 \end{itemize}
 
+Training diagnostic plots (\Cref{fig:hover_success}) show monotonic increase in cumulative rewards and survival time correlated with gradual exploration decay and gradient variance. We can see that as the network settles into a consistent parameterisation, thrust and roll outputs converge with decreasing variance to counteract gravity. The agent learned to hover, and on random targets learned to converge slowly on targets, aquiring them with long enough episode length.
+Though the intended second curriculum phase to learn navigation was thoroughly explored, the agent did not learn to navigate with consistency to more than one target. Weight decay was introduced to escape the hover extrema, a value baseline was introduced using a target seeking SARSA model. Despite these efforts, the agent showed little improvement in target seeking. Training diagnostics showed oscillating cummulative rewards, no significant improvement in policy entropy, and minimal increase in action variance. Time to target improved from 2161 to 1794, however path efficiency decreased from 1.9 to 4.2. The agent learned stable hover behaviour, but learning to navigate from here would require either significant gradual unlearning, or better variance management.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\singlefigure]{figures/neural_reinforce_hover_success.png}
+    \caption{\label{fig:hover_success} Training diagnostics for hover policy. Top left: cumulative reward over training episodes (blue) plotted over survival time. Top right: mean and standard deviation of sampled actions. Bottom left: policy entropy as sigma averages representing exploration rate. Bottom right: gradient norms.}
+\end{figure}
+
 \smallskip

@@ -1,3 +1,6 @@
 \section{Introduction}
 
 Write your introduction here. One can cite\cite{ARXIVEXAMPLE} referenced in the \textit{references.bib} file.
+
+We develop autonomous flight controllers to navigate a two-dimensional (2D) drone to a sequence of dynamic targets under boundary constraints. Unlike heuristic controllers that require explicit mathematical physics motion definition, reinforcement learning (RL) enables agents to discover optimal policies through environmental interaction, emerging naturally with complex control behaviours such as momentum management and trajectory planning. 
+We compare two distinct RL approaches, discrete tabular sarsa and continuous single-layer neural network (NN). Given the limited project timeline and the complexity of stabilising a custom neural network, the tabular sarsa proved to be the more robust solution, achieve competitive performance (>70% success rate). 
