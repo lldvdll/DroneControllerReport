@@ -7,38 +7,32 @@ We implement REINFORCE, a policy gradient method that directly optimises a stoch
 \end{equation}
 where $\alpha$ is the learning rate and $G_t$ is the discounted return, calculated over a full episode of simulation.
 
-While linear models and discrete action spaces (meta-actions) were initially tested, they suffered from limited expressivity and frequent policy collapse respectively. Consequently, we adopted a neural network architecture with a single hidden layer (32 units) and continuous Gaussian outputs. The network outputs means $\mu$ and standard deviations $\sigma$ for total thrust and roll, which are deterministically mapped to motor outputs. This continuous formulation better approximates the kinematic state space, removing the complexity of modelling thrust coupling, and allows $\sigma$ to be learned as an adaptive exploration parameter. Activations were selected to fit output ranges: tanh for thrust $(0,1)$ and sigmoid for roll $(-1,1)$ where saturation near extreme values is beneficial, while ReLU was used for the hidden layer to mitigate vanishing gradients.
+While linear models and discrete action spaces were tested, they suffered from limited expressivity and frequent policy collapse respectively. Consequently, we adopted a neural network architecture with a single hidden layer (32 units) and continuous Gaussian outputs representing total thrust and roll, which are then deterministically mapped to motor outputs. This continuous formulation better approximates the kinematic state-action space, removes the complexity of modelling thrust coupling, and allows $\sigma$ to be learned as an adaptive exploration parameter. Activations were selected to fit output ranges.
 
 \medskip
 % \subsection{Stability and Normalisation}
-REINFORCE is inherently high-variance. Since gradient estimates are based on stochastic Monte Carlo samples and can fluctuate wildly between episodes, convergence is unstable. To stabilise training, we employed:
+REINFORCE is inherently high-variance. Since gradient estimates are based on Monte Carlo samples of Gaussian actions and can fluctuate wildly between episodes, convergence is unstable. To stabilise training, we employed a number of tricks. 
 
-\begin{itemize}
-    \item \textbf{Input Normalisation:} State variables are scaled to the range $(0,1)$, so that natural heterogeneity in feature units is not propagated through to credit assignment.
-    \item \textbf{Baseline:} Discounted returns $G_t$ are normalised across the episode batch (zero mean, unit variance). This acts as a baseline, preventing asymmetric reward distributions from destabilising the policy updates (e.g., with all-negative returns, even good actions are penalised)
-    \item \textbf{Initialisation:} Weights are initialised using Gaussian Xavier initialisation to stabilise gradients.
-\end{itemize}
+With Input Normalisation, state variables are scaled to the range $(0,1)$, so that natural heterogeneity in feature units is not propagated through to credit assignment.
+
+Discounted returns $G_t$ are normalised across episode batches (zero mean, unit variance). This acts as a baseline, preventing asymmetric reward distributions from destabilising the policy updates (e.g., with all-negative returns, even good actions are penalised).
+
+Policy nework weights are initialised using Gaussian Xavier initialisation to stabilise gradients.
+
+Additionally, weight decay is used to regularise against overfitting to exteme episodes, or to relax learned behaviour under curriculum change.
 
 \smallskip
-% \subsection{Learning and Reward Shaping}
 Early experiments showed the drone typically learned behaviours contrary to expectations. Simply rewarding short distance to target and hitting targets resulted in policies where the agent learned that drifting away was more rewarding than applying destabilising directive actions toward targets.
 
 We address this with two ideas. Firstly, we simplify the problem with a curriculum. The agent must first learn stability, and then it should learn to acquire targets. Secondly, we shape rewards to meet the new objectives.
 
-Initially one permanent target is created at (0,0). We employ two rewards, one to encourage target proximity and to penalise actions which smplify drift. The shift from state to state-action rewards along with a low discount factor (0.5), intended to localise returns and reward intention rather than outcome to overcome the return smoothing of REINFORCE. We note that Actor-Critic (AC) is a more principled approach to the same objective and should be investigated in future work.
-\begin{itemize}
-    \item \textbf{Distance to target reward:} Introducing a positive radius to the distance to target reward creates a basin of attraction around the origin.
-    \begin{equation}
-        r_{dist} = 0.25 - \Vert{\vec{x}_{target}} - {\vec{x}_{agent}}\Vert^2
-    \end{equation}
-    \item \textbf{Drift amplification penlty:} State-action reward, penalising roll in the same direction as drift. Note that when drift correction was included, it resulted in either reward gaming or catastrophic oscillation from overcorrection.
-    \begin{equation}
-        r_{drift} = min(0,-v_xroll)
-    \end{equation}
-\end{itemize}
+Initially one permanent target is created at (0,0). Rewards are shaped to encourage target proximity and penalise instability. Coupled with a low discount factor (0.5), we aim to localise returns and to reward intention rather than outcome to overcome the return smoothing of REINFORCE. We note that Actor-Critic (AC) is a more principled approach to the same objective and should be investigated in future work.
 
-Training diagnostic plots (\Cref{fig:hover_success}) show monotonic increase in cumulative rewards and survival time correlated with gradual exploration decay and gradient variance. We can see that as the network settles into a consistent parameterisation, thrust and roll outputs converge with decreasing variance to counteract gravity. The agent learned to hover, and on random targets learned to converge slowly on targets, aquiring them with long enough episode length.
-Though the intended second curriculum phase to learn navigation was thoroughly explored, the agent did not learn to navigate with consistency to more than one target. Weight decay was introduced to escape the hover extrema, a value baseline was introduced using a target seeking SARSA model. Despite these efforts, the agent showed little improvement in target seeking. Training diagnostics showed oscillating cummulative rewards, no significant improvement in policy entropy, and minimal increase in action variance. Time to target improved from 2161 to 1794, however path efficiency decreased from 1.9 to 4.2. The agent learned stable hover behaviour, but learning to navigate from here would require either significant gradual unlearning, or better variance management.
+Introducing a positive radius to the distance to target reward creates a basin of attraction around the target.
+$r_{dist} = 0.25 - \Vert{\vec{x}_{target}} - {\vec{x}_{agent}}\Vert^2$. We penalise drift amplification with a state-action reward, penalising roll in the same direction as drift. Assymetry is introduced to avoid catastrophic oscillation from overcorrection. $r_{drift} = min(0,-v_xroll)$
+
+Training diagnostic plots (\Cref{fig:hover_success}) show monotonic increase in both cumulative rewards and survival time are correlated with gradual exploration decay and decrease in gradient variance. We can see that as the network settles into a consistent parameterisation, thrust and roll outputs converge with decreasing variance to counteract gravity. When tested, the agent converges slowly on targets aquiring them with long enough episode length. The agent learned to stabilise near targets.
+Though the intended second curriculum phase to learn navigation was thoroughly explored, the agent did not learn to navigate with consistency to more than one target. Weight decay was introduced to escape the hover extrema, a value baseline was introduced using a target seeking SARSA model. Despite these efforts, the agent showed little improvement in target seeking. Training diagnostics showed oscillating cummulative rewards, no significant improvement in policy entropy, and minimal increase in action variance. The agent learned stable hover behaviour, but learning to navigate from here would require either significant gradual unlearning, or better variance management.
 
 \begin{figure}
     \centering
