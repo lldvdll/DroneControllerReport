@@ -1,6 +1,6 @@
 \section{Introduction}
 
-We develop autonomous flight controllers to navigate a two-dimensional (2D) drone to a sequence of dynamic targets. Unlike heuristic controllers that require explicit deterministic control, reinforcement learning (RL) enables agents to discover optimal policies through environmental interaction. We compare two distinct RL approaches at the objective of flight control and target seeking.
-The first, a policy gradient method \textbf{REINFORCE} natively supports continuous state and action spaces. We train a shallow neural network for optimal policy using gradient ascent.
-The second, a value-based method \textbf{SARSA}, defined over descretised spaces via state binning and heuristic meta-actions. 
+We develop autonomous flight controllers to navigate a two-dimensional (2D) drone to a sequence of static targets. Unlike heuristic controllers that require explicit deterministic control, reinforcement learning (RL) enables agents to discover optimal policies through environmental interaction. We compare two distinct RL approaches at the objective of flight control and target seeking.
+\textbf{REINFORCE}, policy gradient method, natively supports a continuous state-action space. We train a shallow neural network for optimal policy using gradient ascent.
+\textbf{SARSA}, a value-based method is defined over descrete state-action pairs via state binning and heuristic meta-actions. 
 We show that while REINFORCE is limited to temporary hover stability, SARSA learns stable navigation, outperforming a physics-based controller at target seeking. 
