@@ -1,34 +1,20 @@
 \section{Tabular Sarsa}
-\subsection{Algorithm}
-Tabular methods generally provide better stability and interpretability, without catastrophic interference often observed in neural networks. We employ sarsa, an on-policy temporal difference control algorithm. Unlike off-policy Q-learning that estimates the value of the \textit{optimal} policy, sarsa estimates the value of the current $\epsilon$-greedy policy, yielding more conservative behaviour suited to hard-boundary environments. The Q-value update rule is defined as:
-\begin{equation}
+\paragraph{Algorithm}
+Tabular methods generally provide better stability and interpretability, avoiding the catastrophic interference often observed in neural networks. We employ sarsa, an on-policy temporal difference control algorithm that updates Q-values as: \begin{equation} 
 Q(s_t,a_t) \leftarrow Q(s_t,a_t) + \alpha \left[ r_{t+1} + \gamma Q(s_{t+1},a_{t+1}) - Q(s_t,a_t) \right]
-\end{equation}
-where $\alpha = 0.1$ is the learning rate and $\gamma = 0.999$ is the discount factor.
-\subsection{Agent Architecture}
-\paragraph{State Space Discretisation}
-The drone’s continuous dynamic states $(d_x, d_y, v_x, v_y, \theta, \omega)$ representing target-relative position, velocity, pitch, and angular velocity are discretised into finite bins using a non-uniform strategy.
-\begin{itemize}
-\item \textbf{Position ($d_x, d_y$):} We assign 7 bins with higher resolution near the target. For more stable vertical control, we set its inner threshold to $|d_y| \le 0.05$, within the target radius $R=0.10$., to enforces high-precision altitude hold. For more challenging lateral control, we expanded its inner threshold to $|d_x| \le 0.105$, slightly outside the target radius, which allows the agent to recognise target proximity prior to arrival, enabling the agent to arrest momentum and coast into the target.
-\item \textbf{Dynamics ($v_x, v_y, \theta, \omega$):} We assign 3 bins each, with deliberately low thresholds. This increased sensitivity to detect acceleration buildup or instability early, improving momentum and stability control.
-\end{itemize}
-Additionally, we introduced a binary \textit{danger flag} that activates when the drone approaches within 0.1 of the boundary. This totally yields a manageable state space size of $|\mathcal{S}| = 7^2 \times 3^4 \times 2 = 7,938$ states.
-\paragraph{Macro-Action Space}
-Six heuristic actions map to the continuous thrust pairs $(T_1,T_2)\in [0,1]$:
-
-\begin{itemize}
-\item \texttt{Hover}: maintains the current altitude while stabilising pitch
-\item \texttt{Boost up/down}: modifies vertical thrust while maintaining level attitude.
-\item \texttt{Tilt left/right}: Modulates pitch to generate lateral acceleration. To ensure stability, we constrain the target pitch to $\theta_{opt}=0.28$ rad ($16^\circ$). Furthermore, to enhance manoeuvring flexibility, we modulate the vertical thrust according to the vertical distance to target $d_y$. This design enables the drone to seamlessly transition between tilt up, tilt down, and level tilts within a single macro-action. By scaling thrust proportionally, this allows the drone to aggressively accelerate when far away but automatically dampen momentum as it approaches the target.
-\item \texttt{Arrest motion}: A braking manoeuvre that damps both linear and angular velocities.
-\end{itemize}
-\paragraph{Reward Shaping}
-We implemented a reward structure that balances sparse massive terminal rewards, hit reward and boundary crash penalty, with dense shaping signals. We introduced progress shaping to continuously guide the agent towards the target. For safety, we defined a scaled near boundary penalty that aligns with the state's danger flag to provide immediate negative feedback near boundaries. Additionally, to incentivise speed and path efficiency, we imposed a constant timestep cost. A higher cost induce higher temporal pressure that force the agent to speed up. 
-Throughout training, we logged the distribution of these reward components to detect imbalances, iteratively tuning the weights based on both the reward logs and observed flight behaviours.
-\subsection{Curriculum Training }
-Training is structured in three progressive stages to facilitate learning.
-\begin{itemize}
-\item \textbf{Stage 0 (Basic Navigation):} Targets are generated only in the safe central region, starting with full exploration and slow $\epsilon$ decay.
-\item \textbf{Stage 1 (Full Expansion):} Target generation expands to the full environment, forcing the agent to encounter boundary constraints. To enhance learning stability, we enable action repetition from this stage. By repeating action for three steps, it smooths the trajectory learning process by reducing jitter control noise and facilitating credit assignment.
-\item \textbf{Stage 2 (Advanced):} The crash penalty is significantly increased to disincentivise risky behaviours, encouraging the agent to adopt more conservative manoeuvres near the bounds.
-\end{itemize}
+\end{equation} where $\alpha = 0.1$ is the learning rate and $\gamma = 0.999$ is the discount factor.
+Unlike off-policy Q-learning, sarsa estimates the value of the current $\epsilon$-greedy policy rather than the \textit{optimal} policy, yielding conservative behaviour well-suited to hard-boundary environments. 
+\paragraph{State Discretisation}
+Since tabular method relies on a finite lookup Q-values table, the continuous physical states $(d_x, d_y, v_x, v_y, \theta, \omega)$ representing target-relative position, velocity, pitch, and angular velocity are discretised into non-uniform bins. Position components ($d_x, d_y$) use 7 bins each with higher resolution near the target. We set the vertical inner threshold to $|d_y| \le 0.05$ (within the target radius $R=0.10$) for high-precision altitude hold, leaving more error margin for more challenging lateral control. The lateral inner threshold is set to $|d_x| \le 0.105$ (slightly outside the radius) to allow the agent to recognise target proximity prior to arrival, so that it can arrest momentum and coast into the target. Dynamics ($v_x, v_y, \theta, \omega$) use 3 bins each with deliberately low thresholds. This increased sensitivity allows early detection of acceleration buildup or instability, improving momentum and attitude control. Additionally, a binary \textit{danger flag} activates when the drone approaches within 0.1 units of the boundary. This totally yields a manageable state size of $|\mathcal{S}| = 7^2 \times 3^4 \times 2 = 7,938$.
+\paragraph{Macro-Action}
+Six heuristic actions map to continuous thrust pairs $(T_1,T_2)\in [0,1]$: \texttt{hover} (altitude hold with pitch stabilisation), \texttt{boost up/down} (vertical thrust modulation with level attitude), \texttt{tilt left/right} (targets pitch $\theta_{opt}=0.28$ rad with adaptive vertical thrust for simultaneous lateral and altitude control), and \texttt{arrest motion} (a braking manoeuvre that damps both linear and angular velocities).
+\paragraph{Reward Structure}
+We balance sparse terminal signals target hit reward and crash penalty with dense shaping. These include a scaled progress bonus to guide the agent toward the target, a near-boundary penalty aligned with the danger flag for immediate negative feedback to alert danger zone, and a constant timestep cost to incentivise speed and path efficiency. We iteratively tuned these weights based on reward distribution logs and observed flight behaviours to prevent imbalances and enforce clear objective.
+\paragraph{Curriculum Training}
+Training is structured in three progressive stages to facilitate learning. Stage 0 confines targets to the safe central region, starting with full exploration and slow $\epsilon$ decay. Target generation in stage 1 expands to full environment. To enhance learning stability, we enable action repetition ($n_step=3$) from this stage to reduce control jitter and facilitate credit assignment. Stage 2 significantly increases crash penalty to refine boundary-aware policies. Advancement gates on rolling average target hits performance. Episodes terminate upon all targets acquired, boundary violation, or timeout. 
+Figure~\ref{fig:curriculum} shows the rolling average return during training, exhibiting clear convergence across stages, validating the curriculum design.
+\begin{figure}[t]
+\includegraphics[width=\columnwidth]{ Sarsa_slow_learning_curve.png}
+\caption{\textbf{Sarsa conservative model curriculum training progression.}}
+\label{fig:curriculum}
+\end{figure}
