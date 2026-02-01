@@ -1,35 +1,34 @@
-\section{SARSA}
-Environment
-The drone is modelled as a 2D rigid body with two propellers providing independent thrust values $(T_1,T_2)\in [0,1]^2$. Balanced thrust maintains hover $(T_1+T_2=mg=1N)$, while differential thrust $\bigtriangleup T=T_1-T_2$ generates torque inducing pitch rotation θ, allowing lateral motion via tilted thrust.
-When pitched at angle θ, the thrust decomposes into vertical and horizontal components: 
-$F_y=(T_1+T_2) cos⁡ \theta -mg,F_x=(T_1+T_2)sin \theta$.
-To maintain the drone within the observable region, it operates with boundaries constraints $x \in [-0.75,0.75], y \in [-0.50,0.50]$, derived from a coordinate transformation of the 720 x 480 pixels screen. Crossing these boundaries results in an immediate drone crash and episode termination. 
-Three target modes: fixed (4 predetermined targets for evaluation), random (5 random targets for generalisation test), and curriculum (progressive difficulty specially for training).
-Algorithm
-Tabular Sarsa The primary advantage of Tabular RL is its theoretical stability and interpretability. However, it requires discretising continuous state space into finite bins, introducing a trade-off between control precision and manageable size of state space. 
-Given the environment's hard termination boundaries, we employed sarsa, an on-policy Temporal Difference (TD) algorithm. Unlike off-policy methods (e.g., Q-Learning) that learn the optimal value, sarsa learns the value of the policy actually being followed, taking into account the agent's $\epsilon-greedy$ exploratory behaviours. This makes the agent more conservative and risk-aware. Sarsa updates the Q value according to: 
-
+\section{Tabular Sarsa}
+\subsection{Algorithm}
+Tabular methods generally provide better stability and interpretability, without catastrophic interference often observed in neural networks. We employ sarsa, an on-policy temporal difference control algorithm. Unlike off-policy Q-learning that estimates the value of the \textit{optimal} policy, sarsa estimates the value of the current $\epsilon$-greedy policy, yielding more conservative behaviour suited to hard-boundary environments. The Q-value update rule is defined as:
 \begin{equation}
-    Q(s_t,a_t) \leftarrow Q(s_t,a_t)+\alpha[r_(t+1)+\gamma Q(s_(t+1),a_(t+1))-Q(s_t,a_t)]
+Q(s_t,a_t) \leftarrow Q(s_t,a_t) + \alpha \left[ r_{t+1} + \gamma Q(s_{t+1},a_{t+1}) - Q(s_t,a_t) \right]
 \end{equation}
+where $\alpha = 0.1$ is the learning rate and $\gamma = 0.999$ is the discount factor.
+\subsection{Agent Architecture}
+\paragraph{State Space Discretisation}
+The drone’s continuous dynamic states $(d_x, d_y, v_x, v_y, \theta, \omega)$ representing target-relative position, velocity, pitch, and angular velocity are discretised into finite bins using a non-uniform strategy.
+\begin{itemize}
+\item \textbf{Position ($d_x, d_y$):} We assign 7 bins with higher resolution near the target. For more stable vertical control, we set its inner threshold to $|d_y| \le 0.05$, within the target radius $R=0.10$., to enforces high-precision altitude hold. For more challenging lateral control, we expanded its inner threshold to $|d_x| \le 0.105$, slightly outside the target radius, which allows the agent to recognise target proximity prior to arrival, enabling the agent to arrest momentum and coast into the target.
+\item \textbf{Dynamics ($v_x, v_y, \theta, \omega$):} We assign 3 bins each, with deliberately low thresholds. This increased sensitivity to detect acceleration buildup or instability early, improving momentum and stability control.
+\end{itemize}
+Additionally, we introduced a binary \textit{danger flag} that activates when the drone approaches within 0.1 of the boundary. This totally yields a manageable state space size of $|\mathcal{S}| = 7^2 \times 3^4 \times 2 = 7,938$ states.
+\paragraph{Macro-Action Space}
+Six heuristic actions map to the continuous thrust pairs $(T_1,T_2)\in [0,1]$:
 
-Neural Network
-We attempted to build a single-layer neural network (NN) to handle continuous state inputs. Theoretically, this allows for finer control resolution and superior generalisation. However, in practice, this approach proved significantly more difficult to stabilise. The NN was difficult to tune from scratch and prone to catastrophic interference, failing to maintain consistent behaviours.
-Agent Architecture
-(A) Tabular Sarsa
-State Space The drone's state captures six dimensions of physical dynamics, including relative distance to the target (dx,dy), linear velocity (vx,vy), pitch angle (θ), and angular velocity (ω). To enable tabular reinforcement learning, we converted these continuous values into discrete bins, assigning 7 bins to relative distance for precision and 3 bins to the rest of motion variables. Additionally, we introduced a binary danger flag that activates when the drone is within 0.1 units of game boundary. This results in a total state space size of ∣S∣=7^2×3^4×2=7,938.
-Action Space We define a discrete action space consisting of six macro actions that map to physical thrust outputs (T_1,T_2). The HOVER_STABILISE action maintains the current altitude while stabilising pitch. Lateral navigation is controlled via TILT_LEFT and TILT_RIGHT, which modulate the pitch angle to generate horizontal acceleration. Vertical control are managed by BOOST_UP and BOOST_DOWN, which modify vertical thrust while maintaining a level attitude. Finally, ARREST_MOTION serves as a brake, damping both linear and angular velocities to bring the drone to a halt.
-(B) Neural Network
-
-Training
-Curriculum Learning We employed a curriculum training approach starting with full exploration and random Q-table initialisation in stage 0. Advancement is gated by a performance metric, the rolling average of targets hit per episode. As the agent meets metric criterion and progresses to stages 1 and 2, we decrease the exploration ϵ and increase the complexity of target hitting tasks.
-Episode Termination. An episode terminates when one of three conditions is met: (i) the successful acquisition of all targets in the sequence, (ii) a boundary violation (crash), or (iii) the expiration of the maximum timesteps.
-	Implementation Details
-(A) Tabular Sarsa
-Reward Design We implemented a reward structure that balances sparse massive terminal target hit reward and boundary crash penalty with dense shaping signals which help accelerate learning. We introduced progress shaping to continuously guide the agent toward the target. For safety, we defined a scaled near boundary penalty that aligns perfectly with the state's 'danger' flag, ensuring that the agent receives immediate negative feedback precisely when it enters the danger zone. Additionally, to incentivise speed and path efficiency, we imposed a constant timestep cost. A higher cost induce higher temporal pressure that force the agent to speed up. Throughout training, we logged the distribution of these reward components to detect imbalances, iteratively tuning the weights based on both the reward logs and observed flight behaviours.
-Boundary Awareness In training stage 0, we reduced environmental complexity by constraining target generation to a central region near the starting position, safely away from the boundaries. This initial setup encourages the agent to explore movement and master basic navigation approaching targets without fearing the immediate threat of boundary termination. In stage 1, we expanded the target distribution to the entire game space, forcing the agent to develop a realistic awareness of the boundaries. Once achieving a baseline proficiency in target hits,  it advanced to stage 2, where we significantly increased the out-of-bounds penalty. This aims to refine the policy by disincentivising risky behaviours, encouraging the agent to adopt more conservative manoeuvres near the bounds to ensure survival.
-Learning Stability To enhance learning stability after the initial acquisition of movement skills, we implemented action repetition during stages 1 and 2. By repeating the selected action for three simulation steps, it smooths the learning process by reducing jitter control noise and making it easier for the agent to link specific actions to their future rewards, which is known as credit assignment problem. However, we disable this repetition during evaluation to allow the agent to exercise fine-grained precision when manoeuvring.
-Momentum Management We implemented a target-based control for tilt actions. By constraining the pitch angle to an optimised target of 0.28 radian (16°), we achieved a good balance between consistent lateral acceleration and flight stability. Additionally, we lowered the thresholds for the velocity state bins. This increased sensitivity allows the agent to detect velocity buildup earlier, improving its momentum control authority as the drone picks up speed.
-Fine Controllability Our discretisation strategy is designed to balance precision with reaction time. Since vertical control is more stable, we set a tight inner threshold for dy at ±0.05, within the target radius 0.1. This prevents the agent from lazy hovering and also leaves the spatial error margin available for the more challenging lateral control. Conversely, we set the inner threshold for dx at ±0.105, slightly outside the target radius. This triggers the 'close to target' state just before arrival, giving the agent time to arrest its momentum and coast into the target using inertia.
-To enhance manoeuvring flexibility, we integrated vertical control into the tilt actions by modulating the base vertical thrust according to the vertical distance to target dy. This design enables the drone to seamlessly transition between tilt up, tilt down, and level tilts within a single macro-action. By scaling thrust proportionally, applying higher power at large distances and reducing it as the drone draws near, it automatically dampens vertical momentum during the final approach, preventing overshoot while maintaining aggressive acceleration when far from the target.
-
+\begin{itemize}
+\item \texttt{Hover}: maintains the current altitude while stabilising pitch
+\item \texttt{Boost up/down}: modifies vertical thrust while maintaining level attitude.
+\item \texttt{Tilt left/right}: Modulates pitch to generate lateral acceleration. To ensure stability, we constrain the target pitch to $\theta_{opt}=0.28$ rad ($16^\circ$). Furthermore, to enhance manoeuvring flexibility, we modulate the vertical thrust according to the vertical distance to target $d_y$. This design enables the drone to seamlessly transition between tilt up, tilt down, and level tilts within a single macro-action. By scaling thrust proportionally, this allows the drone to aggressively accelerate when far away but automatically dampen momentum as it approaches the target.
+\item \texttt{Arrest motion}: A braking manoeuvre that damps both linear and angular velocities.
+\end{itemize}
+\paragraph{Reward Shaping}
+We implemented a reward structure that balances sparse massive terminal rewards, hit reward and boundary crash penalty, with dense shaping signals. We introduced progress shaping to continuously guide the agent towards the target. For safety, we defined a scaled near boundary penalty that aligns with the state's danger flag to provide immediate negative feedback near boundaries. Additionally, to incentivise speed and path efficiency, we imposed a constant timestep cost. A higher cost induce higher temporal pressure that force the agent to speed up. 
+Throughout training, we logged the distribution of these reward components to detect imbalances, iteratively tuning the weights based on both the reward logs and observed flight behaviours.
+\subsection{Curriculum Training }
+Training is structured in three progressive stages to facilitate learning.
+\begin{itemize}
+\item \textbf{Stage 0 (Basic Navigation):} Targets are generated only in the safe central region, starting with full exploration and slow $\epsilon$ decay.
+\item \textbf{Stage 1 (Full Expansion):} Target generation expands to the full environment, forcing the agent to encounter boundary constraints. To enhance learning stability, we enable action repetition from this stage. By repeating action for three steps, it smooths the trajectory learning process by reducing jitter control noise and facilitating credit assignment.
+\item \textbf{Stage 2 (Advanced):} The crash penalty is significantly increased to disincentivise risky behaviours, encouraging the agent to adopt more conservative manoeuvres near the bounds.
+\end{itemize}
