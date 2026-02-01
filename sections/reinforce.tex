@@ -7,18 +7,18 @@ We implement REINFORCE, a policy gradient method that directly optimises a stoch
 \end{equation}
 where $\alpha$ is the learning rate and $G_t$ is the discounted return, calculated over a full episode of simulation.
 
-We use a neural network for the policy, with one hidden layer (32 units, ReLU) and Gaussian outputs ($\mu, \sigma$) for thrust and roll, mapped via sigmoid and tanh respectively to enforce kinematic constraints. This continuous formulation outperforms discrete baselines by learning adaptive exploration $\sigma$.
+We use a neural network for the policy, with one hidden layer (32 units, ReLU) and \textbf{Gaussian} outputs ($\mu, \sigma$) for thrust and roll $\phi$, mapped via sigmoid and tanh respectively to enforce kinematic constraints. The policy self-regulates exploration by learning $\sigma$, which governs the stochasticity of sampled trajectories.
 
 \medskip
-REINFORCE is inherently high-variance, so we employed three stabilisation techniques. Input Normalisation to $(0,1)$ prevents feature bias. Batch stabilisation of discounted returns $G_t$ ($\mu=0, \sigma=1$) addressing asymmetric reward distributions (e.g., with all-negative returns, even good actions are penalised). Xavier weight initialisation to stabilise gradients.
+REINFORCE is inherently high-variance, so we employed three stabilisation techniques. \textbf{Input Normalisation} to $(0,1)$ prevents feature bias. \textbf{Batch stabilisation} of discounted returns ($\mu(G)=0, \sigma(G)=1$) addressing asymmetric reward distributions (e.g., with all-negative returns, even good actions are penalised). \textbf{Xavier Initialisation} to stabilise gradients.
 
 \smallskip
 We begin with a hover curriculum, with one permanent target at (0,0). Rewards are shaped to encourage target proximity and penalise instability. In order to overcome the return smoothing of REINFORCE, we reward intention rather than outcome and localise returns with a low discount factor (0.5). We note that Actor-Critic (AC) is a more principled approach to the same objective and should be investigated in future work. Introducing a positive radius to a distance-to-target reward creates a basin of attraction around the target.
-$r_{dist} = 0.25 - \Vert{\vec{x}_{target}} - {\vec{x}_{agent}}\Vert^2$. We penalise actions which amplify drift. Asymmetry is introduced to avoid catastrophic oscillation from overcorrection. $r_{drift} = min(0,-v_xroll)$
+$r_{dist} = 0.25 - \Vert{\vec{x}_{target}} - {\vec{x}_{agent}}\Vert^2$. We penalise actions which amplify drift. Asymmetry is introduced to avoid catastrophic oscillation from overcorrection. $r_{drift} = min(0,-v_x \cdot \phi)$
 
-Training diagnostic plots (\Cref{fig:hover_success}) show monotonic increase in both cumulative rewards and survival time are correlated with gradual exploration decay and decrease in gradient variance. As the network settles into a consistent parameterisation, thrust and roll outputs converge with decreasing variance to counteract gravity. When tested, the agent converges slowly on targets, acquiring them with long enough episode length. The agent learned to stabilise near targets. 
+Training diagnostic plots (\Cref{fig:hover_success}) show that monotonic increases in both cumulative rewards and survival time are correlated with gradual exploration decay and decrease in gradient variance. As the network settles into a consistent parameterisation, thrust and roll outputs converge with decreasing variance to counteract gravity. When tested, the agent converges slowly on targets, acquiring them with long enough episode length. The agent learned to stabilise near targets. 
 
-In the subsequent target seeking phase, the agent failed to navigate consistently to more than one target. Both weight decay to escape the hover extrema and a value baseline using a target seeking SARSA model were unscuccessful. Training failed to stabilise. The agent learned stable hover behaviour, but learning to navigate from here would require either significant gradual unlearning, or better variance management.
+In the subsequent target seeking phase, the agent failed to navigate consistently to more than one target. Both weight decay to escape the hover extrema and a value baseline using a target seeking SARSA model were unsuccessful. Training failed to stabilise. The agent learned stable hover behaviour, however learning to navigate from here would require either significant gradual unlearning, or better variance management.
 
 \begin{figure}
     \centering
