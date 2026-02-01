@@ -1,0 +1,15 @@
+\begin{table}[H]
+\caption{My results}
+\label{tab:results}
+\begin{tabular}{lrlrll}
+\toprule
+ & Crash Rate (%) & Targets Reached & Time to Target (Median) & Path Efficiency & Stability (Pitch Variance) \\
+\midrule
+Heuristic & \text-alignright 46.00 & \text-alignright 4.2 ± 1.08 & \text-alignright 423.50 & \text-alignright 1.64 ± 0.41 & \text-alignright 0.059 ± 0.026 \\
+SARSA Conservative & \text-alignright 22.00 & \text-alignright 4.52 ± 0.98 & \text-alignright 685.00 & \text-alignright 1.32 ± 0.18 & \text-alignright 0.015 ± 0.005 \\
+SARSA Agressive & \text-alignright 34.00 & \text-alignright 4.18 ± 1.29 & \text-alignright 526.00 & \text-alignright 1.24 ± 0.23 & \text-alignright 0.021 ± 0.008 \\
+Neural REINFROCE (90_continue_hover best) & \text-alignright 58.00 & \text-alignright 0.36 ± 0.56 & \text-alignright 1619.50 & \text-alignright 1.99 ± 1.4 & \text-alignright 0.003 ± 0.005 \\
+Neural REINFROCE (102_movement_vb best) & \text-alignright 66.00 & \text-alignright 0.26 ± 0.48 & \text-alignright 1243.00 & \text-alignright 2.09 ± 2.06 & \text-alignright 0.004 ± 0.005 \\
+\bottomrule
+\end{tabular}
+\end{table}
