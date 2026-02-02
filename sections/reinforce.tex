@@ -1,6 +1,6 @@
 \section{REINFORCE}
 
-We implement REINFORCE, a policy gradient method that directly optimises a stochastic policy $\pi_{\theta}(a|s)$. The parameters $\theta$ are updated via gradient ascent on the expected return $J(\theta)$, approximated by sampling trajectories:
+We implement REINFORCE \cite{CourseNotes}, a policy gradient method that directly optimises a stochastic policy $\pi_{\theta}(a|s)$. The parameters $\theta$ are updated via gradient ascent on the expected return $J(\theta)$, approximated by sampling trajectories:
 \begin{equation}
     \theta \leftarrow \theta + \alpha G_t \nabla_{\theta} \log \pi_{\theta}(a_t|s_t)
 \end{equation}
@@ -10,7 +10,7 @@ We use a neural network for the policy, with one hidden layer (32 units, ReLU) a
 
 REINFORCE is inherently high-variance, so we employed three stabilisation techniques. \textbf{Input Normalisation} to $(0,1)$ prevents feature bias. \textbf{Batch stabilisation} of discounted returns ($\mu(G)=0, \sigma(G)=1$) addressing asymmetric reward distributions (e.g., with all-negative returns, even good actions are penalised). \textbf{Xavier Initialisation} to stabilise gradients.
 
-We begin with a hover curriculum, with one permanent target at (0,0). Rewards are shaped to encourage target proximity and penalise instability. In order to overcome the return smoothing of REINFORCE, we reward intention rather than outcome and localise returns with a low discount factor (0.5). Introducing a positive radius to a distance-to-target reward creates a basin of attraction around the target. We penalise actions which amplify drift, using asymmetry to avoid catastrophic oscillation from overcorrection. $r_{drift} = \min(0,-v_x \cdot \phi)$. We note that \textbf{Actor-Critic} (AC) is a more principled approach to the same objective and should be investigated in future work.
+We begin with a hover curriculum, with one permanent target at (0,0). Rewards are shaped to encourage target proximity and penalise instability. In order to overcome the return smoothing of REINFORCE, we reward intention rather than outcome and localise returns with a low discount factor (0.5). Introducing a positive radius to a distance-to-target reward creates a basin of attraction around the target. We penalise actions which amplify drift, using asymmetry to avoid catastrophic oscillation from overcorrection. $r_{drift} = \min(0,-v_x \cdot \phi)$. We note that \textbf{Actor-Critic} (AC) \cite{CourseNotes} is a more principled approach to the same objective and should be investigated in future work.
 
 Training diagnostic plots (\Cref{fig:hover_success}) show that monotonic increases in both cumulative rewards and survival time are correlated with gradual exploration decay and decrease in gradient variance. As the network settles into a consistent parameterisation, thrust and roll outputs converge with decreasing variance to counteract gravity. When tested, the agent approaches targets, acquiring them with long enough episode length. The agent learned to stabilise temporarily near targets.
 
