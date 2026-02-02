@@ -1,7 +1,8 @@
 \section{Results and Discussion}
-
-
+We evaluate controllers over 100 episodes with 5 randomised targets (Table \ref{tab:results}). Performance is measured by \textit{Target Hits} (average acquisitions), \textit{Crash Rate} (boundary collision\%), \textit{Travel Time} (average steps to targets), and \textit{Path Efficiency} (ratio of path length to Euclidean distance). The physics-based heuristic controller achieves fastest (423 steps) but high crash rate (46\%). \textbf{SARSA Slow} prioritises safety with the lowest crash rate (22\%) and the best target hits (4.52) though requiring cautious approach at the cost of speed. \textbf{SARSA Fast} balances speed and safety with the best path efficiency (1.24) and 34.00\% crash rate. However, the continuous REINFORCE algorithm failed, achieving only 0.36 target hits on average. High gradient variance destabilised the delicate hover equilibrium required for this underactuated system. This suggests that for bounded, unstable dynamics, SARSA with discrete state-action space can provide robust policy learning without continuous fine control.
 \input{tables/comparison_stats_bounded}
+\label{tab:results}
+
 % \input{tables/comparison_stats_unbounded}
 
 % \begin{figure}[h]
