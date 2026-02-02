@@ -1,7 +1,7 @@
 \section{Tabular SARSA}
 Tabular methods offer superior stability and interpretability compared to deep reinforcement learning. We employ SARSA, an on-policy temporal difference algorithm that updates Q-values as: 
 \begin{equation} 
-Q(s_t,a_t) \leftarrow Q(s_t,a_t)+\alpha \left[ r_{t+1}+\gamma Q(s_{t+1},a_{t+1})-Q(s_t,a_t) \right]
+Q(s_t,a_t) \leftarrow Q(s_t,a_t)+\alpha \left[r_{t+1}+\gamma Q(s_{t+1},a_{t+1})-Q(s_t,a_t)\right]
 \end{equation} 
 where $\alpha = 0.1$ is the learning rate and $\gamma = 0.999$ is the discount factor. Unlike off-policy Q-learning, SARSA estimates the value of the current $\epsilon$-greedy policy rather than the \textit{optimal} policy, encouraging conservative behaviour that is well-suited to hard-boundary environments. 
 \paragraph{State Discretisation}
@@ -10,5 +10,9 @@ To enable tabular learning, the continuous state vector comprising target-relati
 Six heuristic actions map to continuous thrust pairs $(T_1,T_2)\in [0,1]$: \texttt{hover} (altitude hold with pitch stabilisation), \texttt{boost up/down} (vertical thrust modulation with level attitude), \texttt{tilt left/right} (pitch targeting to $\theta_{opt}=0.28$ rad with adaptive vertical thrust dependent on $d_y$), and \texttt{arrest motion} (damping of linear and angular velocities).
 \paragraph{Reward Structure}
 We balance sparse terminal signals target hit reward and crash penalty with dense shaping terms. These include a scaled progress bonus to guide navigation, a near-boundary penalty aligned with the \textit{danger flag} for immediate negative feedback, and a timestep cost to incentivise speed and path efficiency. Weights were iteratively tuned based on reward distribution logs and observed flight behaviours to prevent imbalances.
-\paragraph{Curriculum Training}
-Training follows three progressive stages. \textbf{Stage 0} confines targets to the safe central region, starting with full exploration. \textbf{Stage 1} expands target generation to the full environment, starting with mild exploration. To reduce control jitter and facilitate credit assignment, we enable action repetition ($n_step=3$) from this stage. \textbf{Stage 2} significantly increases the crash penalty to refine boundary-aware policies. Stage advancement is gated by rolling average target hits. Episodes terminate upon all targets acquired, boundary violation, or timeout. 
+Training follows three progressive stages. \textbf{Stage 0} confines targets to the safe central region to facilitate initial trajectory learning. \textbf{Stage 1} expands target generation to the full environment. From this stage, we enable action repetition ($n_step=3$) to reduce control jitter and facilitate credit assignment. \textbf{Stage 2} significantly increases the crash penalty to refine boundary-aware policies. Stage advancement is gated by rolling average target acquisitions. Episodes terminate upon all targets acquired, boundary violation, or timeout. Figure~\ref{fig:curriculum} illustrates the training trajectory of the \textbf{SARSA Slow} model, demonstrating clear convergence that validate the efficacy of this curriculum design.
+\begin{figure}
+\includegraphics[width=\singlefigure]{ figures/Sarsa_slow_learning_curve.png}
+\caption{\textbf{SARSA Slow} learning curve.}
+\label{fig:curriculum}
+\end{figure}
